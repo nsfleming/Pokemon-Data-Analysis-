@@ -1,0 +1,179 @@
+---
+title: "Assignment 3"
+author: "Nathaniel Fleming"
+date: "2023-04-03"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+Data Background:
+
+This data contains information on on each pokemon from the first generation Kanto Region to the 6th generation Kalos Region Pokemon X and Y.  The data contains 721 unique pokemon with 800 entries for pokemon. Some of these entries include the same pokemon but with a region/generation specific entry, these values will not be included for complexities sake. 
+
+The fields include:
+
+X: ID for each pokemon
+
+Name: Name of each pokemon
+
+Type 1: Each pokemon has a type, this determines weakness/resistance to attacks
+
+Type 2: Some pokemon are dual type and have 2
+
+Total: sum of all stats that come after this, a general guide to how strong a pokemon is
+
+HP: hit points, or health, defines how much damage a pokemon can withstand before fainting
+
+Attack: the base modifier for normal attacks (eg. Scratch, Punch)
+
+Defense: the base damage resistance against normal attacks
+
+SP Atk: special attack, the base modifier for special attacks (e.g. fire blast, bubble beam)
+
+SP Def: the base damage resistance against special attacks
+
+Speed: determines which pokemon attacks first each round.
+
+Legendary: These pokemon can only be caught once and usually have higher stats 
+
+Through this dataset I want to observe what features have an impact on the total stats a pokemon has. through this I will be conducting analysis on several different stats and types. 
+
+
+Import the libraries for the analysis 
+
+```{r,echo=FALSE}
+library(ggplot2)
+file_path <- "C:/Users/Nathaniel Fleming/Desktop/Mohawk/Coding/Assignment 3/"
+
+```
+
+Import the dataset, I chose pokemon to be the dataset to analyze as it is near and dear to my heart. The first step is to read the data.
+```{r}
+pokemonData<- read.csv("C:/Users/Nathaniel Fleming/Desktop/Mohawk/Coding/Assignment 3/Pokemon/Pokemon.csv")
+```
+I imported the correct colour pallete for the pokemon types so that visualization is easier and more accurate to the colour of the types that are in pokemon. 
+```{r}
+# Define custom color palette
+pokemon_colors <- c("Fire" = "#EE8130", "Water" = "#6390F0", "Grass" = "#7AC74C", "Electric" = "#F7D02C", 
+                    "Ice" = "#96D9D6", "Fighting" = "#C22E28", "Poison" = "#A33EA1", "Ground" = "#E2BF65", 
+                    "Flying" = "#A98FF3", "Psychic" = "#F95587", "Bug" = "#A6B91A", "Rock" = "#B6A136", 
+                    "Ghost" = "#735797", "Dragon" = "#6F35FC", "Dark" = "#705746", "Steel" = "#B7B7CE", 
+                    "Fairy" = "#D685AD")
+
+```
+Explore the dataset and get to know the variables and datatypes associated with the csv
+```{r}
+View(pokemonData)
+```
+Checking the structure of the data 
+```{r}
+str(pokemonData)
+```
+Checking the summary statistics of the dataset
+```{r}
+summary(pokemonData)
+```
+```{r}
+head(pokemonData)
+tail(pokemonData)
+```
+
+Cleaning the Dataset
+```{r}
+dupe_rows<- duplicated(pokemonData$X.)
+pokemonNoDupes<- subset(pokemonData,!dupe_rows)
+summary(pokemonNoDupes)
+```
+Check for outliers
+```{r}
+
+# Create a box plot of Total stats by Type
+boxplot_type_total <- ggplot(pokemonNoDupes, aes(x = Type.1, y = Total, fill = Type.1)) +
+  geom_boxplot() +
+  labs(x = "Type", y = "Total Stats", title = "Total Stats by Type")+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+# Apply custom color palette
+boxplot_type_total + scale_fill_manual(values = pokemon_colors)
+ggsave(file.path(file_path, "boxplot.png"), plot = boxplot_type_total)
+
+```
+Normal type pokemon seem to have one of the larger variance in stat types than 
+
+I wanted to compare pokemon that have more than one type to those with only one so I subset the data into multitype and single type pokemon. This way we can compare pokemon that have more than one type versus the pokemon with one type. 
+
+```{r}
+# Filter out blank values that are just spaces in the Type.2 column
+multi_type_pokemon <- pokemonNoDupes[nchar(trimws(pokemonNoDupes$Type.2)) > 0, ]
+
+# Filter out blank values in the Type.2 column
+multi_type_pokemon
+
+#Single Type pokemon 
+# Filter for empty values in the Type.2 column
+Single_Type_Pokemon <- pokemonNoDupes[is.na(pokemonNoDupes$Type.2) | nchar(trimws(pokemonNoDupes$Type.2)) == 0, ]
+Single_Type_Pokemon
+
+```
+
+
+
+```{r}
+# Create scatterplot with custom colors
+scatterplot<-ggplot(pokemonNoDupes, aes(x = Attack, y = Defense, color = Type.1)) +
+  geom_point() +
+  scale_color_manual(values = pokemon_colors)
+ggsave(file.path(file_path, "scatterplot.png"), plot = scatterplot)
+
+```
+Exploration into the speeds 
+```{r}
+speed_hist <- ggplot(pokemonNoDupes, aes(x = Speed)) +
+  geom_histogram(bins = 20) +
+  labs(x = "Pokemon Attack Speed", y = "Count", title = "Distribution of Pokemon Attack Speeds")
+speed_hist
+# Save the plot to a PNG file
+ggsave(file.path(file_path, "speed_hist.png"), plot = speed_hist)
+```
+
+```{r}
+legendary_pokemon <- subset(pokemonNoDupes,Legendary == 'True' )
+legendary_pokemon
+
+```
+
+```{r}
+Legendary_atk_vs_def <- ggplot(legendary_pokemon, aes(x = Attack, y = Defense, color = Type.1)) + 
+  geom_point() +
+  labs(title = "Attack vs Defense for Legendary Pokemon", 
+       x = "Attack", y = "Defense") +
+   scale_color_manual(values = pokemon_colors)
+ggsave(file.path(file_path,"legendary_atk_vs_def.png"),plot = Legendary_atk_vs_def)
+
+```
+
+```{r}
+
+
+# calculate frequency of each type
+type_freq <- table(pokemonNoDupes$Type.1)
+
+# convert table to data frame and sort by frequency
+type_freq_df <- data.frame(Type = names(type_freq), Freq = as.vector(type_freq))
+type_freq_df <- type_freq_df[order(type_freq_df$Freq, decreasing = TRUE), ]
+
+# create bar plot
+Type_Freq <- ggplot(type_freq_df, aes(x = reorder(Type, -Freq), y = Freq, fill = Type)) +
+  geom_bar(stat = "identity") +
+  scale_fill_manual(values = pokemon_colors) +
+  xlab("Type") +
+  ylab("Frequency") +
+  ggtitle("Frequency of Pokemon Types") +
+  theme(plot.title = element_text(hjust = 0.5))+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5),legend.position = 'none')
+  
+  ggsave(file.path(file_path,"Pokemon_Freq_by_Type.png"),plot = Type_Freq)
+
+```
+
